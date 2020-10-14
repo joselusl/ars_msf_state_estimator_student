@@ -406,18 +406,25 @@ class ArsMsfStateEstimator:
     Hx = np.zeros((dim_meas,8), dtype=float)
     Hx_idx = 0
     if(flag_set_meas_robot_posi == True):
+      # Meas robot posi - robot posi
       # TODO BY STUDENT
       # Hx[Hx_idx:Hx_idx+3, 0:3] = 
       Hx_idx += 3
 
     if(flag_set_meas_robot_atti == True):
+      # Meas robot atti - robot atti
       Hx[Hx_idx:Hx_idx+1, 3] = 1.0
       Hx_idx += 1
 
     if(flag_set_meas_robot_vel_robot == True):
+      # Meas velo lin - robot atti
+      # TODO BY STUDENT
+      # Hx[Hx_idx:Hx_idx+3, 3] = 
+      # Meas velo lin - robot velo lin
       # TODO BY STUDENT
       # Hx[Hx_idx:Hx_idx+3, 4:7] = 
       Hx_idx += 3
+      # Meas velo ang - robot velo ang
       Hx[Hx_idx:Hx_idx+1, 7] = 1.0
       Hx_idx += 1
 
