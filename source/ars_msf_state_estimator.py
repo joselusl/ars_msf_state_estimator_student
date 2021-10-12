@@ -121,6 +121,7 @@ class ArsMsfStateEstimator:
     
     # Cov estimated state
     self.estim_state_cov = np.zeros((8,8), dtype=float)
+    # TODO BY STUDENT (update values)
     self.estim_state_cov = np.diag([1.0, 1.0, 1.0, 
                                     1.0, 
                                     1.0, 1.0, 1.0,
@@ -128,16 +129,20 @@ class ArsMsfStateEstimator:
 
     # Covariance of the process model
     self.cov_proc_mod = np.zeros((4,4), dtype=float)
+    # TODO BY STUDENT (update values)
     self.cov_proc_mod = np.diag([1.0, 1.0, 1.0, 
                                     1.0])
 
     # Covariance meas position
+    # TODO BY STUDENT (update values)
     self.cov_meas_posi = np.diag([1.0, 1.0, 1.0])
 
     # Covariance meas attitude
+    # TODO BY STUDENT (update values)
     self.cov_meas_atti = np.diag([1.0])
 
     # Covariance meas velocity
+    # TODO BY STUDENT (update values)
     self.cov_meas_velo_lin = np.diag([1.0, 1.0, 1.0])
     self.cov_meas_velo_ang = np.diag([1.0])
 
@@ -418,8 +423,8 @@ class ArsMsfStateEstimator:
 
     if(flag_set_meas_robot_vel_robot == True):
       # Meas velo lin - robot atti
-      # TODO BY STUDENT
-      # Hx[Hx_idx:Hx_idx+3, 3] = 
+      mat_R = ars_lib_helpers.Quaternion.diffRotMat3dWrtAngleFromAngle(estim_x_k1k_robot_atti_ang)
+      Hx[Hx_idx:Hx_idx+3, 3] = np.matmul(mat_R.T, estim_x_k1k_robot_velo_lin_world)
       # Meas velo lin - robot velo lin
       # TODO BY STUDENT
       # Hx[Hx_idx:Hx_idx+3, 4:7] = 
