@@ -12,8 +12,6 @@ import threading
 
 import rospy
 
-import tf_conversions as tf
-
 
 import nav_msgs.msg
 from nav_msgs.msg import Path

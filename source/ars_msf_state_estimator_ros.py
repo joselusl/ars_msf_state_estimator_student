@@ -31,8 +31,6 @@ from geometry_msgs.msg import TwistWithCovarianceStamped
 
 
 
-import tf_conversions as tf
-
 import tf2_ros
 
 
