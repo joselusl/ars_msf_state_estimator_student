@@ -341,19 +341,15 @@ class ArsMsfStateEstimatorRos:
 
   def estimRobotVelocityPublish(self):
 
-    # TODO Finish!
-
     #
+    # Robot Velocity Wrt world
+
+    # Header
     header_wrt_world_msg = Header()
     header_wrt_world_msg.stamp = self.msf_state_estimator.estim_state_timestamp
     header_wrt_world_msg.frame_id = self.world_frame
 
-    #
-    header_wrt_robot_msg = Header()
-    header_wrt_robot_msg.stamp = self.msf_state_estimator.estim_state_timestamp
-    header_wrt_robot_msg.frame_id = self.robot_frame
-
-    #
+    # Twist
     robot_velocity_world_msg = Twist()
     #
     robot_velocity_world_msg.linear.x = self.msf_state_estimator.estim_robot_velo_lin_world[0]
@@ -363,39 +359,57 @@ class ArsMsfStateEstimatorRos:
     robot_velocity_world_msg.angular.x = 0.0
     robot_velocity_world_msg.angular.y = 0.0
     robot_velocity_world_msg.angular.z = self.msf_state_estimator.estim_robot_velo_ang_world[0]
-
-    #
-    # TODO Cov
-
-    #
-    # TODO wrt robot
-
-    #
+    
+    # TwistStamped
     robot_velocity_world_stamp_msg = TwistStamped()
     robot_velocity_world_stamp_msg.header = header_wrt_world_msg
     robot_velocity_world_stamp_msg.twist = robot_velocity_world_msg
 
-    #
+    # TwistWithCovarianceStamped
+    # TODO JL Cov
     robot_velocity_world_cov_stamp_msg = TwistWithCovarianceStamped()
     robot_velocity_world_cov_stamp_msg.header = header_wrt_world_msg
     robot_velocity_world_cov_stamp_msg.twist.twist = robot_velocity_world_msg
     # robot_velocity_world_cov_stamp_msg.twist.covariance
 
-    #
-    # TODO
-    robot_velocity_robot_stamp_msg = TwistStamped()
-    robot_velocity_robot_stamp_msg.header = header_wrt_robot_msg
-    #robot_velocity_robot_stamp_msg.twist = robot_velocity_robot_msg
 
     #
-    # TODO
+    # Robot velocity wrt robot
+
+    # computation estim robot velocity robot
+    estim_robot_vel_lin_robot = ars_lib_helpers.Conversions.convertVelLinFromWorldToRobot(self.msf_state_estimator.estim_robot_velo_lin_world, self.msf_state_estimator.estim_robot_atti_quat_simp, flag_quat_simp=True)
+    estim_robot_vel_ang_robot = ars_lib_helpers.Conversions.convertVelAngFromWorldToRobot(self.msf_state_estimator.estim_robot_velo_ang_world, self.msf_state_estimator.estim_robot_atti_quat_simp, flag_quat_simp=True)
+
+    # Header
+    header_wrt_robot_msg = Header()
+    header_wrt_robot_msg.stamp = self.msf_state_estimator.estim_state_timestamp
+    header_wrt_robot_msg.frame_id = self.robot_frame
+
+    # Twist
+    robot_velocity_robot_msg = Twist()
+    #
+    robot_velocity_robot_msg.linear.x = estim_robot_vel_lin_robot[0]
+    robot_velocity_robot_msg.linear.y = estim_robot_vel_lin_robot[1]
+    robot_velocity_robot_msg.linear.z = estim_robot_vel_lin_robot[2]
+    #
+    robot_velocity_robot_msg.angular.x = 0.0
+    robot_velocity_robot_msg.angular.y = 0.0
+    robot_velocity_robot_msg.angular.z = estim_robot_vel_ang_robot[0]
+
+    # TwistStamped
+    robot_velocity_robot_stamp_msg = TwistStamped()
+    robot_velocity_robot_stamp_msg.header = header_wrt_robot_msg
+    robot_velocity_robot_stamp_msg.twist = robot_velocity_robot_msg
+
+    # TwistWithCovarianceStamped
+    # TODO JL Cov
     robot_velocity_robot_cov_stamp_msg = TwistWithCovarianceStamped()
     robot_velocity_robot_cov_stamp_msg.header = header_wrt_robot_msg
-    #robot_velocity_robot_cov_stamp_msg.twist.twist = robot_velocity_robot_msg
+    robot_velocity_robot_cov_stamp_msg.twist.twist = robot_velocity_robot_msg
     # robot_velocity_robot_cov_stamp_msg.twist.covariance
 
 
-
+    # Publish
     #
     self.estim_robot_vel_world_pub.publish(robot_velocity_world_stamp_msg)
     # 
@@ -406,7 +420,7 @@ class ArsMsfStateEstimatorRos:
     # 
     self.estim_robot_vel_robot_cov_pub.publish(robot_velocity_robot_cov_stamp_msg)
 
-    #
+    # End
     return
   
 
