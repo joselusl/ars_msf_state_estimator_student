@@ -119,33 +119,51 @@ class ArsMsfStateEstimator:
     
     # Cov estimated state
     self.estim_state_cov = np.zeros((8,8), dtype=float)
-    # TODO BY STUDENT (update values)
-    self.estim_state_cov = np.diag([1.0, 1.0, 1.0, 
-                                    1.0, 
-                                    1.0, 1.0, 1.0,
-                                    1.0])
 
     # Covariance of the process model
     self.cov_proc_mod = np.zeros((4,4), dtype=float)
-    # TODO BY STUDENT (update values)
-    self.cov_proc_mod = np.diag([1.0, 1.0, 1.0, 
-                                    1.0])
 
     # Covariance meas position
-    # TODO BY STUDENT (update values)
-    self.cov_meas_posi = np.diag([1.0, 1.0, 1.0])
+    self.cov_meas_posi = np.zeros((3,3), dtype=float)
 
     # Covariance meas attitude
-    # TODO BY STUDENT (update values)
-    self.cov_meas_atti = np.diag([1.0])
+    self.cov_meas_atti = np.zeros((1,1), dtype=float)
 
     # Covariance meas velocity
-    # TODO BY STUDENT (update values)
-    self.cov_meas_velo_lin = np.diag([1.0, 1.0, 1.0])
-    self.cov_meas_velo_ang = np.diag([1.0])
+    self.cov_meas_velo_lin = np.zeros((3,3), dtype=float)
+    self.cov_meas_velo_ang = np.zeros((1,1), dtype=float)
 
 
     # End
+    return
+
+
+  def setConfigParameters(self, config_param):
+
+    # Estmated Pose
+    self.estim_robot_posi = np.array(config_param['estimated_state_init']['state']['robot_position'])
+    self.estim_robot_atti_quat_simp = ars_lib_helpers.Quaternion.setQuatSimp(config_param['estimated_state_init']['state']['robot_atti_quat_simp'])
+    # Estimated Velocity
+    self.estim_robot_velo_lin_world = np.array(config_param['estimated_state_init']['state']['robot_vel_lin_world'])
+    self.estim_robot_velo_ang_world = np.array(config_param['estimated_state_init']['state']['robot_vel_ang_world'])
+
+    # Cov estimated state
+    self.estim_state_cov = np.diag(config_param['estimated_state_init']['cov_diag'])
+
+    # Covariance of the process model
+    self.cov_proc_mod = np.diag(config_param['process_model']['cov_diag'])
+
+    # Covariance meas position
+    self.cov_meas_posi = np.diag(config_param['measurements']['meas_position']['cov_diag'])
+
+    # Covariance meas attitude
+    self.cov_meas_atti = np.diag(config_param['measurements']['meas_attitude']['cov_diag'])
+
+    # Covariance meas velocity
+    self.cov_meas_velo_lin = np.diag(config_param['measurements']['meas_velo_lin']['cov_diag'])
+    self.cov_meas_velo_ang = np.diag(config_param['measurements']['meas_velo_ang']['cov_diag'])
+
+
     return
 
 
