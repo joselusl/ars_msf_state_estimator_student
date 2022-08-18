@@ -12,7 +12,6 @@ import threading
 
 import rospy
 
-
 import nav_msgs.msg
 from nav_msgs.msg import Path
 
@@ -72,6 +71,10 @@ class ArsMsfStateEstimator:
   estim_state_cov = None
 
 
+  #
+  lock_state = None
+
+
   # Covariance of the process model
   cov_proc_mod = None
 
@@ -119,6 +122,10 @@ class ArsMsfStateEstimator:
     
     # Cov estimated state
     self.estim_state_cov = np.zeros((8,8), dtype=float)
+
+    #
+    self.lock_state = threading.Lock()
+
 
     # Covariance of the process model
     self.cov_proc_mod = np.zeros((4,4), dtype=float)
@@ -213,6 +220,10 @@ class ArsMsfStateEstimator:
   
   def predict(self, timestamp):
 
+    #
+    self.lock_state.acquire()
+
+
     # Delta time
     delta_time = 0.0
     if(self.estim_state_timestamp == rospy.Time()):
@@ -251,29 +262,29 @@ class ArsMsfStateEstimator:
 
 
     # Jacobian - Fx
-    Fx = np.zeros((8,8), dtype=float)
+    jac_Fx = np.zeros((8,8), dtype=float)
     # Position k+1 - Position k
     # TODO BY STUDENT
-    # Fx[0:3, 0:3] = 
+    # jac_Fx[0:3, 0:3] = 
     # Position k+1 - Velocity k
-    # Fx[0:3, 4:7] = 
+    # jac_Fx[0:3, 4:7] = 
     # Attitude k+1 - Attitude k
-    Fx[3, 3] = 1.0
-    Fx[3, 7] = delta_time
+    jac_Fx[3, 3] = 1.0
+    jac_Fx[3, 7] = delta_time
     # Velocity linear k+1 - Velocity linear k
     # TODO BY STUDENT
-    # Fx[4:7, 4:7] = 
+    # jac_Fx[4:7, 4:7] = 
     # Velocity angular k+1 - Velocity angular k
-    Fx[7, 7] = 1.0
+    jac_Fx[7, 7] = 1.0
 
 
     # Jacobian - Fn
-    Fn = np.zeros((8,4), dtype=float)
+    jac_Fn = np.zeros((8,4), dtype=float)
     # Velocity linear k+1 - Noise Velocity linear
     # TODO BY STUDENT
-    # Fn[4:7, 0:3] = 
+    # jac_Fn[4:7, 0:3] = 
     # Velocity angular k+1 - Noise Velocity angular
-    Fn[7,3] = 1.0
+    jac_Fn[7,3] = 1.0
 
 
     # Covariance
@@ -292,6 +303,10 @@ class ArsMsfStateEstimator:
     self.estim_robot_velo_ang_world = estim_x_k1k_robot_velo_ang_world
     #
     self.estim_state_cov = estim_P_k1k
+
+
+    #
+    self.lock_state.release()
 
     #
     return
@@ -351,6 +366,11 @@ class ArsMsfStateEstimator:
 
 
     # State readings - To avoid races
+
+    #
+    self.lock_state.acquire()
+
+    # Robot
     estim_x_k1k_robot_posi = self.estim_robot_posi
     estim_x_k1k_robot_atti_quat_simp = self.estim_robot_atti_quat_simp
     estim_x_k1k_robot_velo_lin_world = self.estim_robot_velo_lin_world
@@ -424,30 +444,30 @@ class ArsMsfStateEstimator:
 
 
     # Jacobian Hx
-    Hx = np.zeros((dim_meas,8), dtype=float)
-    Hx_idx = 0
+    jac_Hx = np.zeros((dim_meas,8), dtype=float)
+    jac_Hx_meas_idx = 0
     if(flag_set_meas_robot_posi == True):
       # Meas robot posi - robot posi
       # TODO BY STUDENT
-      # Hx[Hx_idx:Hx_idx+3, 0:3] = 
-      Hx_idx += 3
+      # jac_Hx[jac_Hx_meas_idx:jac_Hx_meas_idx+3, 0:3] = 
+      jac_Hx_meas_idx += 3
 
     if(flag_set_meas_robot_atti == True):
       # Meas robot atti - robot atti
-      Hx[Hx_idx:Hx_idx+1, 3] = 1.0
-      Hx_idx += 1
+      jac_Hx[jac_Hx_meas_idx:jac_Hx_meas_idx+1, 3] = 1.0
+      jac_Hx_meas_idx += 1
 
     if(flag_set_meas_robot_vel_robot == True):
       # Meas velo lin - robot atti
       mat_R = ars_lib_helpers.Quaternion.diffRotMat3dWrtAngleFromAngle(estim_x_k1k_robot_atti_ang)
-      Hx[Hx_idx:Hx_idx+3, 3] = np.matmul(mat_R.T, estim_x_k1k_robot_velo_lin_world)
+      jac_Hx[jac_Hx_meas_idx:jac_Hx_meas_idx+3, 3] = np.matmul(mat_R.T, estim_x_k1k_robot_velo_lin_world)
       # Meas velo lin - robot velo lin
       # TODO BY STUDENT
-      # Hx[Hx_idx:Hx_idx+3, 4:7] = 
-      Hx_idx += 3
+      # jac_Hx[jac_Hx_meas_idx:jac_Hx_meas_idx+3, 4:7] = 
+      jac_Hx_meas_idx += 3
       # Meas velo ang - robot velo ang
-      Hx[Hx_idx:Hx_idx+1, 7] = 1.0
-      Hx_idx += 1
+      jac_Hx[jac_Hx_meas_idx:jac_Hx_meas_idx+1, 7] = 1.0
+      jac_Hx_meas_idx += 1
 
 
     # Covariance of the innovation of the measurement
@@ -493,6 +513,9 @@ class ArsMsfStateEstimator:
     #
     self.estim_state_cov = estim_P_k1k1
 
+
+    #
+    self.lock_state.release()
     
     #
     return
