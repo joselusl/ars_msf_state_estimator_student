@@ -378,6 +378,10 @@ class ArsMsfStateEstimator:
     # Cov
     estim_P_k1k = self.estim_state_cov
 
+    # robot atti - angle
+    estim_x_k1k_robot_atti_ang = ars_lib_helpers.Quaternion.angleFromQuatSimp(estim_x_k1k_robot_atti_quat_simp)
+
+
     # Rotation matrix robot atti
     estim_x_k1k_robot_atti_rot_mat = np.zeros((3,3), dtype=float)
     estim_x_k1k_robot_atti_rot_mat = ars_lib_helpers.Quaternion.rotMat3dFromQuatSimp(estim_x_k1k_robot_atti_quat_simp)
