@@ -1,26 +1,21 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import numpy as np
 from numpy import *
-
-import os
 
 import threading
 
 
 # ROS
-
-import rospy
+import rclpy
+from rclpy.time import Time
 
 import nav_msgs.msg
 from nav_msgs.msg import Path
 
 
-
 #
-import ars_lib_helpers
-
-
+import ars_lib_helpers.ars_lib_helpers as ars_lib_helpers
 
 
 
@@ -96,15 +91,15 @@ class ArsMsfStateEstimator:
 
     # Meas Position
     self.flag_set_meas_robot_posi = False
-    self.meas_robot_posi_timestamp = rospy.Time()
+    self.meas_robot_posi_timestamp = Time()
     self.meas_robot_posi = np.zeros((3,), dtype=float)
     # Meas Attitude
     self.flag_set_meas_robot_atti = False
-    self.meas_robot_atti_timestamp = rospy.Time()
+    self.meas_robot_atti_timestamp = Time()
     self.meas_robot_atti_quat_simp = ars_lib_helpers.Quaternion.zerosQuatSimp()
     # Meas Velocity
     self.flag_set_meas_robot_vel_robot = False
-    self.meas_robot_velo_timestamp = rospy.Time()
+    self.meas_robot_velo_timestamp = Time()
     self.meas_robot_velo_lin_robot = np.zeros((3,), dtype=float)
     self.meas_robot_velo_ang_robot = np.zeros((1,), dtype=float)
 
@@ -112,7 +107,7 @@ class ArsMsfStateEstimator:
     self.lock_meas = threading.Lock()
 
     # Estimated State
-    self.estim_state_timestamp = rospy.Time()
+    self.estim_state_timestamp = Time()
     # Estmated Pose
     self.estim_robot_posi = np.zeros((3,), dtype=float)
     self.estim_robot_atti_quat_simp = ars_lib_helpers.Quaternion.zerosQuatSimp()
@@ -226,10 +221,11 @@ class ArsMsfStateEstimator:
 
     # Delta time
     delta_time = 0.0
-    if(self.estim_state_timestamp == rospy.Time()):
+    estim_state_timestamp = self.estim_state_timestamp.to_msg()
+    if(estim_state_timestamp.sec == 0 and estim_state_timestamp.nanosec == 0):
       delta_time = 0.0
     else:
-      delta_time = (timestamp - self.estim_state_timestamp).to_sec()
+      delta_time = (timestamp - self.estim_state_timestamp).nanoseconds/1e9
 
     # State
     estim_x_kk_robot_posi = self.estim_robot_posi
@@ -378,11 +374,11 @@ class ArsMsfStateEstimator:
     # Cov
     estim_P_k1k = self.estim_state_cov
 
+
     # robot atti - angle
     estim_x_k1k_robot_atti_ang = ars_lib_helpers.Quaternion.angleFromQuatSimp(estim_x_k1k_robot_atti_quat_simp)
 
-
-    # Rotation matrix robot atti
+    # robot atti - Rotation matrix 3d
     estim_x_k1k_robot_atti_rot_mat = np.zeros((3,3), dtype=float)
     estim_x_k1k_robot_atti_rot_mat = ars_lib_helpers.Quaternion.rotMat3dFromQuatSimp(estim_x_k1k_robot_atti_quat_simp)
 

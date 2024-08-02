@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import numpy as np
 from numpy import *
@@ -11,10 +11,11 @@ from yaml.loader import SafeLoader
 
 
 # ROS
+import rclpy
+from rclpy.node import Node
+from rclpy.time import Time
 
-import rospy
-
-import rospkg
+from ament_index_python.packages import get_package_share_directory
 
 import std_msgs.msg
 from std_msgs.msg import Header
@@ -32,24 +33,19 @@ from geometry_msgs.msg import TwistStamped
 from geometry_msgs.msg import TwistWithCovarianceStamped
 
 
-
 import tf2_ros
 
 
-
+#
+from ars_msf_state_estimator.ars_msf_state_estimator import *
 
 #
-from ars_msf_state_estimator import *
-
-
-#
-import ars_lib_helpers
+import ars_lib_helpers.ars_lib_helpers as ars_lib_helpers
 
 
 
 
-
-class ArsMsfStateEstimatorRos:
+class ArsMsfStateEstimatorRos(Node):
 
   #######
 
@@ -93,6 +89,7 @@ class ArsMsfStateEstimatorRos:
   #
   config_param = None
 
+
   # MSF state estimator
   msf_state_estimator = None
   
@@ -100,47 +97,51 @@ class ArsMsfStateEstimatorRos:
 
   #########
 
-  def __init__(self):
+  def __init__(self, node_name='ars_msf_state_estimator_node'):
+
+    # Init ROS
+    super().__init__(node_name)
 
     # Robot frame
     self.robot_frame = 'robot_estim_base_link'
-
     # World frame
     self.world_frame = 'world'
 
     # State Estim loop freq 
-    # time step
     self.state_estim_loop_freq = 50.0
 
     # Motion controller
     self.msf_state_estimator = ArsMsfStateEstimator()
 
+    #
+    self.__init(node_name)
 
     # end
     return
 
 
-  def init(self, node_name='ars_msf_state_estimator_node'):
-    #
+  def __init(self, node_name='ars_msf_state_estimator_node'):
 
-    # Init ROS
-    rospy.init_node(node_name, anonymous=True)
-
-    
     # Package path
-    pkg_path = rospkg.RosPack().get_path('ars_msf_state_estimator')
-    
+    try:
+      pkg_path = get_package_share_directory('ars_msf_state_estimator')
+      self.get_logger().info(f"The path to the package is: {pkg_path}")
+    except ModuleNotFoundError:
+      self.get_logger().info("Package not found")
 
+    
     #### READING PARAMETERS ###
     
     # Config param
     default_config_param_yaml_file_name = os.path.join(pkg_path,'config','config_msf_state_estimator.yaml')
-    config_param_yaml_file_name_str = rospy.get_param('~config_param_msf_state_estimator_yaml_file', default_config_param_yaml_file_name)
-    print(config_param_yaml_file_name_str)
+    # Declare the parameter with a default value
+    self.declare_parameter('config_param_msf_state_estimator_yaml_file', default_config_param_yaml_file_name)
+    # Get the parameter value
+    config_param_yaml_file_name_str = self.get_parameter('config_param_msf_state_estimator_yaml_file').get_parameter_value().string_value
+    self.get_logger().info(config_param_yaml_file_name_str)
     self.config_param_yaml_file_name = os.path.abspath(config_param_yaml_file_name_str)
 
     ###
-
 
     # Load config param
     with open(self.config_param_yaml_file_name,'r') as file:
@@ -149,10 +150,10 @@ class ArsMsfStateEstimatorRos:
         self.config_param = yaml.load(file, Loader=SafeLoader)['msf_state_estimator']
 
     if(self.config_param is None):
-      print("Error loading config param msf state estimator")
+      self.get_logger().info("Error loading config param msf state estimator")
     else:
-      print("Config param msf state estimator:")
-      print(self.config_param)
+      self.get_logger().info("Config param msf state estimator:")
+      self.get_logger().info(str(self.config_param))
 
 
     # Parameters
@@ -175,37 +176,37 @@ class ArsMsfStateEstimatorRos:
     # Subscribers
 
     # 
-    self.meas_robot_posi_sub = rospy.Subscriber('meas_robot_position', PointStamped, self.measRobotPositionCallback)
+    self.meas_robot_posi_sub = self.create_subscription(PointStamped, 'meas_robot_position', self.measRobotPositionCallback, qos_profile=10)
     # 
-    self.meas_robot_atti_sub = rospy.Subscriber('meas_robot_attitude', QuaternionStamped, self.measRobotAttitudeCallback)
+    self.meas_robot_atti_sub = self.create_subscription(QuaternionStamped, 'meas_robot_attitude', self.measRobotAttitudeCallback, qos_profile=10)
     #
-    self.meas_robot_vel_robot_sub = rospy.Subscriber('meas_robot_velocity_robot', TwistStamped, self.measRobotVelRobotCallback)
+    self.meas_robot_vel_robot_sub = self.create_subscription(TwistStamped, 'meas_robot_velocity_robot', self.measRobotVelRobotCallback, qos_profile=10)
     
 
 
     # Publishers
 
     # 
-    self.estim_robot_pose_pub = rospy.Publisher('estim_robot_pose', PoseStamped, queue_size=1)
+    self.estim_robot_pose_pub = self.create_publisher(PoseStamped, 'estim_robot_pose', qos_profile=10)
     # 
-    self.estim_robot_pose_cov_pub = rospy.Publisher('estim_robot_pose_cov', PoseWithCovarianceStamped, queue_size=1)
+    self.estim_robot_pose_cov_pub = self.create_publisher(PoseWithCovarianceStamped, 'estim_robot_pose_cov', qos_profile=10)
     #
-    self.estim_robot_vel_robot_pub = rospy.Publisher('estim_robot_velocity_robot', TwistStamped, queue_size=1)
+    self.estim_robot_vel_robot_pub = self.create_publisher(TwistStamped, 'estim_robot_velocity_robot', qos_profile=10)
     #
-    self.estim_robot_vel_robot_cov_pub = rospy.Publisher('estim_robot_velocity_robot_cov', TwistWithCovarianceStamped, queue_size=1)
+    self.estim_robot_vel_robot_cov_pub = self.create_publisher(TwistWithCovarianceStamped, 'estim_robot_velocity_robot_cov', qos_profile=10)
     #
-    self.estim_robot_vel_world_pub = rospy.Publisher('estim_robot_velocity_world', TwistStamped, queue_size=1)
+    self.estim_robot_vel_world_pub = self.create_publisher(TwistStamped, 'estim_robot_velocity_world', qos_profile=10)
     #
-    self.estim_robot_vel_world_cov_pub = rospy.Publisher('estim_robot_velocity_world_cov', TwistWithCovarianceStamped, queue_size=1)
+    self.estim_robot_vel_world_cov_pub = self.create_publisher(TwistWithCovarianceStamped, 'estim_robot_velocity_world_cov', qos_profile=10)
 
 
     # Tf2 broadcasters
-    self.tf2_broadcaster = tf2_ros.TransformBroadcaster()
+    self.tf2_broadcaster = tf2_ros.TransformBroadcaster(self)
 
 
     # Timers
     #
-    self.state_estim_loop_timer = rospy.Timer(rospy.Duration(1.0/self.state_estim_loop_freq), self.stateEstimLoopTimerCallback)
+    self.state_estim_loop_timer = self.create_timer(1.0/self.state_estim_loop_freq, self.stateEstimLoopTimerCallback)
 
 
     # End
@@ -214,7 +215,7 @@ class ArsMsfStateEstimatorRos:
 
   def run(self):
 
-    rospy.spin()
+    rclpy.spin(self)
 
     return
 
@@ -302,7 +303,7 @@ class ArsMsfStateEstimatorRos:
 
     #
     header_msg = Header()
-    header_msg.stamp = self.msf_state_estimator.estim_state_timestamp
+    header_msg.stamp = self.msf_state_estimator.estim_state_timestamp.to_msg()
     header_msg.frame_id = self.world_frame
 
     #
@@ -349,23 +350,23 @@ class ArsMsfStateEstimatorRos:
 
 
     # Tf2
-    tf2__msg = geometry_msgs.msg.TransformStamped()
+    estim_robot_pose_tf2_msg = geometry_msgs.msg.TransformStamped()
 
-    tf2__msg.header.stamp = self.msf_state_estimator.estim_state_timestamp
-    tf2__msg.header.frame_id = self.world_frame
-    tf2__msg.child_frame_id = self.robot_frame
+    estim_robot_pose_tf2_msg.header.stamp = self.msf_state_estimator.estim_state_timestamp.to_msg()
+    estim_robot_pose_tf2_msg.header.frame_id = self.world_frame
+    estim_robot_pose_tf2_msg.child_frame_id = self.robot_frame
 
-    tf2__msg.transform.translation.x = self.msf_state_estimator.estim_robot_posi[0]
-    tf2__msg.transform.translation.y = self.msf_state_estimator.estim_robot_posi[1]
-    tf2__msg.transform.translation.z = self.msf_state_estimator.estim_robot_posi[2]
+    estim_robot_pose_tf2_msg.transform.translation.x = self.msf_state_estimator.estim_robot_posi[0]
+    estim_robot_pose_tf2_msg.transform.translation.y = self.msf_state_estimator.estim_robot_posi[1]
+    estim_robot_pose_tf2_msg.transform.translation.z = self.msf_state_estimator.estim_robot_posi[2]
 
-    tf2__msg.transform.rotation.w = self.msf_state_estimator.estim_robot_atti_quat_simp[0]
-    tf2__msg.transform.rotation.x = 0.0
-    tf2__msg.transform.rotation.y = 0.0
-    tf2__msg.transform.rotation.z = self.msf_state_estimator.estim_robot_atti_quat_simp[1]
+    estim_robot_pose_tf2_msg.transform.rotation.w = self.msf_state_estimator.estim_robot_atti_quat_simp[0]
+    estim_robot_pose_tf2_msg.transform.rotation.x = 0.0
+    estim_robot_pose_tf2_msg.transform.rotation.y = 0.0
+    estim_robot_pose_tf2_msg.transform.rotation.z = self.msf_state_estimator.estim_robot_atti_quat_simp[1]
 
     # Broadcast
-    self.tf2_broadcaster.sendTransform(tf2__msg)
+    self.tf2_broadcaster.sendTransform(estim_robot_pose_tf2_msg)
 
 
     # End
@@ -379,7 +380,7 @@ class ArsMsfStateEstimatorRos:
 
     # Header
     header_wrt_world_msg = Header()
-    header_wrt_world_msg.stamp = self.msf_state_estimator.estim_state_timestamp
+    header_wrt_world_msg.stamp = self.msf_state_estimator.estim_state_timestamp.to_msg()
     header_wrt_world_msg.frame_id = self.world_frame
 
     # Twist
@@ -415,7 +416,7 @@ class ArsMsfStateEstimatorRos:
 
     # Header
     header_wrt_robot_msg = Header()
-    header_wrt_robot_msg.stamp = self.msf_state_estimator.estim_state_timestamp
+    header_wrt_robot_msg.stamp = self.msf_state_estimator.estim_state_timestamp.to_msg()
     header_wrt_robot_msg.frame_id = self.robot_frame
 
     # Twist
@@ -455,12 +456,12 @@ class ArsMsfStateEstimatorRos:
 
     # End
     return
-  
 
-  def stateEstimLoopTimerCallback(self, timer_msg):
+    
+  def stateEstimLoopTimerCallback(self):
 
     # Get time
-    time_stamp_current = rospy.Time.now()
+    time_stamp_current = self.get_clock().now()
 
     # Predict
     self.msf_state_estimator.predict(time_stamp_current)
