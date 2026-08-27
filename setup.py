@@ -20,7 +20,6 @@ setup(
  maintainer_email='joseluis.sanlop@gmail.com',
  description='TODO: Package description',
  license='BSD',
- tests_require=['pytest'],
  entry_points={'console_scripts': [
  		'ars_msf_state_estimator_ros_node = ars_msf_state_estimator.ars_msf_state_estimator_ros_node:main',
         ],},
